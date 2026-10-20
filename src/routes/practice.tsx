@@ -52,7 +52,7 @@ function Practice() {
     );
   }
 
-  const q = QUESTION_MAP[qid];
+  const q = QUESTION_MAP[qid]!;
   const attempt = s.answers[qid];
   const follow = q.pairedQuestionId ? QUESTION_MAP[q.pairedQuestionId] : undefined;
   const followAttempt = follow ? s.followUps[follow.id] : undefined;

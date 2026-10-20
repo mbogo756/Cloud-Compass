@@ -28,7 +28,7 @@ function shuffle<T>(arr: T[], rand: () => number): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(rand() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
+    [a[i], a[j]] = [a[j]!, a[i]!];
   }
   return a;
 }
@@ -132,8 +132,8 @@ export function aggregateHistory(history: Session[]) {
     for (const [id, a] of Object.entries(s.answers)) {
       const q = QUESTION_MAP[id];
       if (!q) continue;
-      byConcept[q.concept].total++;
-      if (a.correct) byConcept[q.concept].correct++;
+      byConcept[q.concept]!.total++;
+      if (a.correct) byConcept[q.concept]!.correct++;
     }
   }
   return { diagnostic, followUp, byDomain, byConcept };

@@ -6,7 +6,7 @@ import { useStore } from "@/lib/use-store";
 import { CONFIDENCE_LABELS, computeStats, createSession, pct, type Confidence } from "@/lib/quiz";
 
 export const Route = createFileRoute("/results")({
-  validateSearch: (s: Record<string, unknown>) => ({ session: typeof s.session === "string" ? s.session : undefined }),
+  validateSearch: (s: Record<string, unknown>) => ({ session: typeof s["session"] === "string" ? s["session"] : undefined }),
   head: () => ({
     meta: [
       { title: "Session results — Cloud Compass" },
@@ -107,7 +107,7 @@ function Results() {
               {st.revisit.map((r) => (
                 <li key={r.questionId} className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
                   <span className="font-medium">{r.concept}</span>
-                  <span className="text-xs text-muted-foreground">{r.reason} · <a className="text-primary hover:underline" href={QUESTION_MAP[r.questionId].sourceUrl} target="_blank" rel="noreferrer">Microsoft Learn</a></span>
+                  <span className="text-xs text-muted-foreground">{r.reason} · <a className="text-primary hover:underline" href={QUESTION_MAP[r.questionId]?.sourceUrl} target="_blank" rel="noreferrer">Microsoft Learn</a></span>
                 </li>
               ))}
             </ul>
@@ -118,7 +118,7 @@ function Results() {
           <h2 className="text-sm font-semibold">Review answers</h2>
           <ol className="mt-3 space-y-2">
             {s.questionIds.map((id, i) => {
-              const q = QUESTION_MAP[id];
+              const q = QUESTION_MAP[id]!;
               const a = s.answers[id];
               const f = q.pairedQuestionId ? s.followUps[q.pairedQuestionId] : undefined;
               return (
