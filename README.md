@@ -1,4 +1,4 @@
-# Screenshot Match
+# Cloud Compass
 
 Implement exactly the screenshot and nothing else
 
