@@ -1,6 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { AppShell, Meter } from "@/components/AppShell";
+import { SessionReplacePrompt } from "@/components/SessionReplacePrompt";
 import { DOMAINS, QUESTION_MAP } from "@/data/questions";
 import { useStore } from "@/lib/use-store";
 import { CONFIDENCE_LABELS, computeStats, createSession, pct, type Confidence } from "@/lib/quiz";
@@ -22,6 +24,7 @@ function Results() {
   const { session: sid } = Route.useSearch();
   const { store, ready, update } = useStore();
   const navigate = useNavigate();
+  const [confirmingReplace, setConfirmingReplace] = useState(false);
   if (!ready) return <AppShell><p className="text-sm text-muted-foreground">Loading…</p></AppShell>;
 
   const s = (sid && store.history.find((h) => h.id === sid)) || store.history[store.history.length - 1];
@@ -37,9 +40,19 @@ function Results() {
     );
   }
   const st = computeStats(s);
+  const unfinishedSession = store.current;
+
   const startNew = () => {
     update((x) => ({ ...x, current: createSession() }));
     navigate({ to: "/practice" });
+  };
+
+  const handleStartAnotherClick = () => {
+    if (unfinishedSession) {
+      setConfirmingReplace(true);
+    } else {
+      startNew();
+    }
   };
 
   return (
@@ -142,9 +155,28 @@ function Results() {
           </ol>
         </section>
 
-        <div className="flex flex-wrap gap-3">
-          <button className="btn btn-primary" onClick={startNew}>Start another session</button>
-          <Link to="/progress" className="btn btn-outline">View progress</Link>
+        <div className="space-y-3">
+          {unfinishedSession && confirmingReplace ? (
+            <SessionReplacePrompt
+              unfinishedSession={unfinishedSession}
+              onDiscardAndStart={() => {
+                setConfirmingReplace(false);
+                startNew();
+              }}
+              onCancel={() => setConfirmingReplace(false)}
+              title="Replace unfinished session?"
+              description={`You are viewing completed results, but an unfinished session is in progress (${Object.keys(unfinishedSession.answers).length} of ${unfinishedSession.questionIds.length} answered). Starting another session will discard it. Completed history remains saved.`}
+            />
+          ) : (
+            <div className="flex flex-wrap gap-3">
+              <button type="button" className="btn btn-primary" onClick={handleStartAnotherClick}>
+                Start another session
+              </button>
+              <Link to="/progress" className="btn btn-outline">
+                View progress
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </AppShell>

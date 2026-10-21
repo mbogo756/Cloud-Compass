@@ -1,6 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { BarChart3, Gauge, HardDrive, ListChecks } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { SessionReplacePrompt } from "@/components/SessionReplacePrompt";
 import { useStore } from "@/lib/use-store";
 import { createSession } from "@/lib/quiz";
 
@@ -21,10 +23,28 @@ function Index() {
   const navigate = useNavigate();
   const current = store.current;
   const answered = current ? Object.keys(current.answers).length : 0;
+  const [confirmingReplace, setConfirmingReplace] = useState(false);
 
-  const start = () => {
+  const startNewSession = () => {
     update((s) => ({ ...s, current: createSession() }));
     navigate({ to: "/practice" });
+  };
+
+  const handleStartClick = () => {
+    if (current) {
+      setConfirmingReplace(true);
+    } else {
+      startNewSession();
+    }
+  };
+
+  const handleDiscardAndStart = () => {
+    setConfirmingReplace(false);
+    startNewSession();
+  };
+
+  const handleCancel = () => {
+    setConfirmingReplace(false);
   };
 
   return (
@@ -43,12 +63,21 @@ function Index() {
                 <Link to="/practice" className="btn btn-primary">
                   Resume practice ({answered}/{current.questionIds.length} answered)
                 </Link>
-                <button className="btn btn-outline" onClick={start}>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={handleStartClick}
+                >
                   Start a new session
                 </button>
               </>
             ) : (
-              <button className="btn btn-primary" onClick={start} disabled={!ready}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleStartClick}
+                disabled={!ready}
+              >
                 Start practice
               </button>
             )}
@@ -58,8 +87,12 @@ function Index() {
               </Link>
             )}
           </div>
-          {ready && current && (
-            <p className="mt-2 text-xs text-muted-foreground">Starting a new session discards the unfinished one.</p>
+          {ready && current && confirmingReplace && (
+            <SessionReplacePrompt
+              unfinishedSession={current}
+              onDiscardAndStart={handleDiscardAndStart}
+              onCancel={handleCancel}
+            />
           )}
         </div>
 

@@ -142,19 +142,256 @@ export function aggregateHistory(history: Session[]) {
 export const pct = (t: Tally) => (t.total ? Math.round((t.correct / t.total) * 100) : null);
 
 // ---------- Storage ----------
-function isAttempt(x: unknown): x is Attempt {
-  const a = x as Attempt;
-  return !!a && typeof a.questionId === "string" && typeof a.optionId === "string" && typeof a.correct === "boolean" && ["guessing", "somewhat", "very"].includes(a.confidence);
+const VALID_CONFIDENCES = new Set<string>(["guessing", "somewhat", "very"]);
+
+function isValidTimestamp(val: unknown): val is number {
+  return typeof val === "number" && Number.isFinite(val) && val > 0;
 }
-function validSession(x: unknown): Session | null {
-  const s = x as Session;
-  if (!s || typeof s !== "object" || typeof s.id !== "string" || !Array.isArray(s.questionIds)) return null;
-  if (!s.questionIds.every((id) => typeof id === "string" && QUESTION_MAP[id]?.kind === "diagnostic")) return null;
-  if (typeof s.index !== "number" || s.index < 0 || s.index >= s.questionIds.length) return null;
-  const answers = s.answers && typeof s.answers === "object" ? s.answers : {};
-  const followUps = s.followUps && typeof s.followUps === "object" ? s.followUps : {};
-  if (!Object.values(answers).every(isAttempt) || !Object.values(followUps).every(isAttempt)) return null;
-  return { ...s, answers, followUps, optionOrder: s.optionOrder && typeof s.optionOrder === "object" ? s.optionOrder : {} };
+
+function isValidConfidence(val: unknown): val is Confidence {
+  return typeof val === "string" && VALID_CONFIDENCES.has(val);
+}
+
+type RawAttempt = {
+  questionId?: unknown;
+  optionId?: unknown;
+  confidence?: unknown;
+  correct?: unknown;
+  at?: unknown;
+};
+
+type RawSession = {
+  id?: unknown;
+  startedAt?: unknown;
+  completedAt?: unknown;
+  questionIds?: unknown;
+  optionOrder?: unknown;
+  index?: unknown;
+  answers?: unknown;
+  followUps?: unknown;
+};
+
+/**
+ * Repairs an optionOrder map so every diagnostic question and paired follow-up in the
+ * session contains every valid option ID exactly once. Preserves existing valid ordering
+ * where practical and appends any missing options in canonical order.
+ */
+export function repairOptionOrder(
+  rawOptionOrder: unknown,
+  questionIds: string[],
+): Record<string, string[]> {
+  const result: Record<string, string[]> = {};
+  const rawObj =
+    rawOptionOrder && typeof rawOptionOrder === "object" && !Array.isArray(rawOptionOrder)
+      ? (rawOptionOrder as Record<string, unknown>)
+      : {};
+
+  const targetIds: string[] = [];
+  for (const qid of questionIds) {
+    targetIds.push(qid);
+    const q = QUESTION_MAP[qid];
+    if (q?.pairedQuestionId) {
+      targetIds.push(q.pairedQuestionId);
+    }
+  }
+
+  for (const id of targetIds) {
+    const question = QUESTION_MAP[id];
+    if (!question) continue;
+    const validOptionIds = question.options.map((o) => o.id);
+    const rawList = rawObj[id];
+
+    if (Array.isArray(rawList)) {
+      const seen = new Set<string>();
+      const ordered: string[] = [];
+      for (const item of rawList) {
+        if (typeof item === "string" && validOptionIds.includes(item) && !seen.has(item)) {
+          seen.add(item);
+          ordered.push(item);
+        }
+      }
+      for (const optId of validOptionIds) {
+        if (!seen.has(optId)) {
+          ordered.push(optId);
+        }
+      }
+      result[id] = ordered;
+    } else {
+      result[id] = [...validOptionIds];
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Validates and repairs session data.
+ * - Recomputes correctness deterministically from option IDs and answer keys.
+ * - Enforces 6 unique diagnostic questions (2 per domain).
+ * - Enforces valid session ID and finite timestamps.
+ * - For "history" mode: requires completedAt and all 6 diagnostic answers.
+ * - For "current" mode: requires a sequentially resumable state without gaps.
+ * - Repairs optionOrder where practical.
+ * Returns null if the session is irrecoverably invalid.
+ */
+export function validSession(x: unknown, mode: "current" | "history" = "history"): Session | null {
+  if (!x || typeof x !== "object" || Array.isArray(x)) return null;
+  const s = x as RawSession;
+
+  // 1. Valid session ID
+  if (typeof s.id !== "string" || s.id.trim().length === 0) return null;
+
+  // 2. Finite timestamps
+  if (!isValidTimestamp(s.startedAt)) return null;
+  if (s.completedAt !== undefined && s.completedAt !== null) {
+    if (!isValidTimestamp(s.completedAt) || s.completedAt < s.startedAt) return null;
+  }
+  if (mode === "history" && !isValidTimestamp(s.completedAt)) {
+    return null;
+  }
+
+  // 3. Six unique diagnostic question IDs, two per domain
+  if (!Array.isArray(s.questionIds) || s.questionIds.length !== 6) return null;
+  const rawQids = s.questionIds as unknown[];
+  const questionIds: string[] = [];
+  for (const id of rawQids) {
+    if (typeof id !== "string") return null;
+    questionIds.push(id);
+  }
+  if (new Set(questionIds).size !== 6) return null;
+
+  const domainCounts: Record<Domain, number> = {
+    "cloud-concepts": 0,
+    "architecture-services": 0,
+    "management-governance": 0,
+  };
+
+  for (const id of questionIds) {
+    const q = QUESTION_MAP[id];
+    if (!q || q.kind !== "diagnostic") return null;
+    domainCounts[q.domain] = (domainCounts[q.domain] ?? 0) + 1;
+  }
+
+  if (
+    domainCounts["cloud-concepts"] !== 2 ||
+    domainCounts["architecture-services"] !== 2 ||
+    domainCounts["management-governance"] !== 2
+  ) {
+    return null;
+  }
+  // 4. An integer index within bounds
+  const maxIndex = questionIds.length - 1;
+  if (
+    typeof s.index !== "number" ||
+    !Number.isInteger(s.index) ||
+    s.index < 0 ||
+    s.index > maxIndex
+  ) {
+    return null;
+  }
+  if (mode === "history" && s.index !== maxIndex) return null;
+
+  // 5. Answers validation
+  if (
+    s.answers !== undefined &&
+    s.answers !== null &&
+    (typeof s.answers !== "object" || Array.isArray(s.answers))
+  ) {
+    return null;
+  }
+  const rawAnswers = (s.answers ?? {}) as Record<string, unknown>;
+  const cleanAnswers: Record<string, Attempt> = {};
+
+  for (const [key, rawAttempt] of Object.entries(rawAnswers)) {
+    if (!questionIds.includes(key)) return null;
+    if (!rawAttempt || typeof rawAttempt !== "object" || Array.isArray(rawAttempt)) return null;
+    const att = rawAttempt as RawAttempt;
+    if (att.questionId !== key) return null;
+    if (!isValidTimestamp(att.at)) return null;
+    if (!isValidConfidence(att.confidence)) return null;
+
+    const q = QUESTION_MAP[key]!;
+    if (typeof att.optionId !== "string" || !q.options.some((o) => o.id === att.optionId)) {
+      return null;
+    }
+
+    cleanAnswers[key] = {
+      questionId: key,
+      optionId: att.optionId,
+      confidence: att.confidence,
+      correct: att.optionId === q.correctOptionId,
+      at: att.at,
+    };
+  }
+
+  // 6. Follow-ups validation
+  if (
+    s.followUps !== undefined &&
+    s.followUps !== null &&
+    (typeof s.followUps !== "object" || Array.isArray(s.followUps))
+  ) {
+    return null;
+  }
+  const rawFollowUps = (s.followUps ?? {}) as Record<string, unknown>;
+  const cleanFollowUps: Record<string, Attempt> = {};
+
+  for (const [fid, rawAttempt] of Object.entries(rawFollowUps)) {
+    if (!rawAttempt || typeof rawAttempt !== "object" || Array.isArray(rawAttempt)) return null;
+    const att = rawAttempt as RawAttempt;
+    if (att.questionId !== fid) return null;
+
+    const f = QUESTION_MAP[fid];
+    if (!f || f.kind !== "follow-up") return null;
+
+    const parentId = questionIds.find((id) => QUESTION_MAP[id]?.pairedQuestionId === fid);
+    if (!parentId || !cleanAnswers[parentId]) return null;
+
+    if (!isValidTimestamp(att.at)) return null;
+    if (!isValidConfidence(att.confidence)) return null;
+    if (typeof att.optionId !== "string" || !f.options.some((o) => o.id === att.optionId)) {
+      return null;
+    }
+
+    cleanFollowUps[fid] = {
+      questionId: fid,
+      optionId: att.optionId,
+      confidence: att.confidence,
+      correct: att.optionId === f.correctOptionId,
+      at: att.at,
+    };
+  }
+
+  // 7. Sequence check
+  if (mode === "history") {
+    for (const qid of questionIds) {
+      if (!cleanAnswers[qid]) return null;
+    }
+  } else {
+    for (let i = 0; i < s.index; i++) {
+      const qid = questionIds[i];
+      if (!qid || !cleanAnswers[qid]) return null;
+    }
+    for (let i = s.index + 1; i < questionIds.length; i++) {
+      const qid = questionIds[i];
+      if (qid && cleanAnswers[qid]) return null;
+    }
+  }
+
+  // 8. Repair optionOrder
+  const optionOrder = repairOptionOrder(s.optionOrder, questionIds);
+
+  const cleanSession: Session = {
+    id: s.id,
+    startedAt: s.startedAt,
+    questionIds,
+    optionOrder,
+    index: s.index,
+    answers: cleanAnswers,
+    followUps: cleanFollowUps,
+    ...(typeof s.completedAt === "number" ? { completedAt: s.completedAt } : {}),
+  };
+
+  return cleanSession;
 }
 
 export function parseStore(raw: string | null): Store {
@@ -164,8 +401,12 @@ export function parseStore(raw: string | null): Store {
     if (!data || data.version !== 1) return emptyStore();
     return {
       version: 1,
-      current: data.current ? validSession(data.current) : null,
-      history: Array.isArray(data.history) ? data.history.map(validSession).filter(Boolean) as Session[] : [],
+      current: data.current ? validSession(data.current, "current") : null,
+      history: Array.isArray(data.history)
+        ? (data.history
+            .map((h: unknown) => validSession(h, "history"))
+            .filter((s: Session | null): s is Session => s !== null))
+        : [],
     };
   } catch {
     return emptyStore();
