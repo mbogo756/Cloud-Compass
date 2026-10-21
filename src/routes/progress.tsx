@@ -74,8 +74,8 @@ function Progress() {
               <ul className="mt-2 divide-y text-sm">
                 {Object.entries(agg.byConcept).map(([c, t]) => (
                   <li key={c} className="flex flex-wrap justify-between gap-2 py-2">
-                    <span>{c} <span className="text-xs text-muted-foreground">· {domainLabel(t.domain)}</span></span>
-                    <span className="text-muted-foreground">{t.total ? `${t.correct} of ${t.total} correct` : "Not assessed"}</span>
+                    <span className="min-w-0 break-words">{c} <span className="text-xs text-muted-foreground">· {domainLabel(t.domain)}</span></span>
+                    <span className="min-w-0 text-muted-foreground">{t.total ? `${t.correct} of ${t.total} correct` : "Not assessed"}</span>
                   </li>
                 ))}
               </ul>
@@ -88,11 +88,11 @@ function Progress() {
                   const st = computeStats(s);
                   return (
                     <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                      <span>{new Date(s.completedAt ?? s.startedAt).toLocaleString()}</span>
-                      <span className="flex items-center gap-3 text-muted-foreground">
+                      <span className="min-w-0 break-words">{new Date(s.completedAt ?? s.startedAt).toLocaleString()}</span>
+                      <span className="flex min-w-0 flex-wrap items-center gap-x-3 text-muted-foreground">
                         Diagnostic {st.diagnostic.correct}/{st.diagnostic.total}
                         {st.followUp.total > 0 && ` · Follow-up ${st.followUp.correct}/${st.followUp.total}`}
-                        <Link to="/results" search={{ session: s.id }} className="font-medium text-primary hover:underline">Details</Link>
+                        <Link to="/results" search={{ session: s.id }} className="inline-flex min-h-11 items-center font-medium text-primary hover:underline">Details</Link>
                       </span>
                     </li>
                   );

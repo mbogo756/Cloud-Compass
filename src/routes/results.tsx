@@ -80,8 +80,8 @@ function Results() {
               return (
                 <li key={d.id}>
                   <div className="mb-1 flex justify-between gap-2 text-sm">
-                    <span>{d.label}</span>
-                    <span className="text-muted-foreground">{p === null ? "Not assessed" : `${p}% · ${t.correct} of ${t.total}`}</span>
+                    <span className="min-w-0 break-words">{d.label}</span>
+                    <span className="min-w-0 shrink-0 text-right text-muted-foreground">{p === null ? "Not assessed" : `${p}% · ${t.correct} of ${t.total}`}</span>
                   </div>
                   <Meter value={p} label={`${d.label} accuracy`} />
                 </li>
@@ -119,8 +119,8 @@ function Results() {
             <ul className="mt-2 space-y-2">
               {st.revisit.map((r) => (
                 <li key={r.questionId} className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
-                  <span className="font-medium">{r.concept}</span>
-                  <span className="text-xs text-muted-foreground">{r.reason} · <a className="text-primary hover:underline" href={QUESTION_MAP[r.questionId]?.sourceUrl} target="_blank" rel="noreferrer">Microsoft Learn</a></span>
+                  <span className="min-w-0 break-words font-medium">{r.concept}</span>
+                  <span className="min-w-0 text-xs text-muted-foreground">{r.reason} · <a className="inline-flex min-h-11 items-center text-primary hover:underline" href={QUESTION_MAP[r.questionId]?.sourceUrl} target="_blank" rel="noreferrer">Microsoft Learn</a></span>
                 </li>
               ))}
             </ul>
@@ -139,7 +139,7 @@ function Results() {
                   <details className="rounded-md border p-3 text-sm">
                     <summary className="flex cursor-pointer items-start gap-2">
                       {a?.correct ? <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success-text" aria-label="Correct" /> : <XCircle className="mt-0.5 size-4 shrink-0 text-destructive-text" aria-label="Incorrect" />}
-                      <span className="flex-1">Q{i + 1}. {q.concept}</span>
+                      <span className="min-w-0 flex-1 break-words">Q{i + 1}. {q.concept}</span>
                     </summary>
                     <div className="mt-2 space-y-1.5 pl-6 text-muted-foreground">
                       <p className="text-foreground">{q.scenario}</p>

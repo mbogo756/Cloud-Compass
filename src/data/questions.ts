@@ -191,7 +191,7 @@ export const QUESTIONS: Question[] = [
   },
   {
     id: "as-az-f", kind: "follow-up", domain: "architecture-services", concept: "Regions and availability zones",
-    scenario: "A company wants its data to stay protected even if an entire geographic region becomes unavailable. Which Azure concept supports this?",
+    scenario: "A company is planning for a regional outage and is configuring an Azure service that supports geo-replication. Which Azure concept identifies an associated secondary region for some services?",
     options: [
       { id: "a", text: "Availability zones only" },
       { id: "b", text: "Region pairs" },
@@ -199,8 +199,8 @@ export const QUESTIONS: Question[] = [
       { id: "d", text: "Azure Policy" },
     ],
     correctOptionId: "b",
-    explanation: "Region pairs link two regions in the same geography, so workloads can be recovered if a whole region fails.",
-    conceptSummary: "Zones protect against datacenter failure; region pairs protect against regional failure.",
+    explanation: "Some Azure services use region pairs to support geo-replication. Pairing alone does not replicate a workload or provide automatic recovery; the service and recovery plan must be configured.",
+    conceptSummary: "Availability zones separate datacenters within a region. Region pairs associate some regions for services that support geo-replication; the pair alone does not provide automatic failover.",
     explanationsForWrongOptions: {
       a: "Availability zones are all inside one region, so a full-region outage would affect them.",
       c: "Tags are metadata labels; they provide no resilience.",

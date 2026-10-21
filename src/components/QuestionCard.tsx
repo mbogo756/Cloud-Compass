@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useId, useState, type RefObject } from "react";
 import { CheckCircle2, ExternalLink, Lightbulb, XCircle } from "lucide-react";
 import { domainLabel, type Question } from "@/data/questions";
 import { CONFIDENCE_LABELS, type Attempt, type Confidence } from "@/lib/quiz";
@@ -11,9 +11,10 @@ type Props = {
   attempt: Attempt | undefined;
   onSubmit: (optionId: string, confidence: Confidence) => void;
   label: string;
+  headingRef?: RefObject<HTMLHeadingElement | null>;
 };
 
-export function QuestionCard({ question, order, attempt, onSubmit, label }: Props) {
+export function QuestionCard({ question, order, attempt, onSubmit, label, headingRef }: Props) {
   const uid = useId();
   const [selected, setSelected] = useState<string | null>(null);
   const [confidence, setConfidence] = useState<Confidence | null>(null);
@@ -28,7 +29,15 @@ export function QuestionCard({ question, order, attempt, onSubmit, label }: Prop
         <span className="rounded border bg-surface px-2 py-0.5 font-medium text-muted-foreground">{label}</span>
         <span className="rounded bg-accent px-2 py-0.5 font-medium text-accent-foreground">{domainLabel(question.domain)}</span>
       </div>
-      <h2 id={`${uid}-q`} className="text-base font-medium leading-relaxed text-foreground sm:text-lg">
+      <h2
+        id={`${uid}-q`}
+        ref={headingRef}
+        tabIndex={headingRef ? -1 : undefined}
+        className={cn(
+          "text-base font-medium leading-relaxed text-foreground sm:text-lg",
+          headingRef && "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
+        )}
+      >
         {question.scenario}
       </h2>
 
@@ -65,7 +74,7 @@ export function QuestionCard({ question, order, attempt, onSubmit, label }: Prop
                     onChange={() => setSelected(o.id)}
                     className="mt-0.5 size-4 accent-primary"
                   />
-                  <span className="flex-1">
+                  <span className="min-w-0 flex-1 break-words">
                     <span className="mr-1 font-medium text-muted-foreground">{String.fromCharCode(65 + i)}.</span>
                     {o.text}
                   </span>
@@ -119,6 +128,10 @@ export function QuestionCard({ question, order, attempt, onSubmit, label }: Prop
         )}
       </form>
 
+      <span role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+        {attempt &&
+          `${attempt.correct ? "Correct" : "Incorrect"}. ${getCoaching(question, attempt).headline}. Your confidence: ${CONFIDENCE_LABELS[attempt.confidence]}.`}
+      </span>
       {attempt && <Feedback question={question} attempt={attempt} />}
     </section>
   );
@@ -129,7 +142,7 @@ function Feedback({ question, attempt }: { question: Question; attempt: Attempt 
   const correctText = question.options.find((o) => o.id === question.correctOptionId)?.text;
   const wrong = !attempt.correct ? question.explanationsForWrongOptions[attempt.optionId] : null;
   return (
-    <div className="mt-6 space-y-4 border-t pt-5" role="status" aria-live="polite">
+    <div className="mt-6 space-y-4 border-t pt-5">
       <div
         className={cn(
           "flex items-start gap-3 rounded-md border p-3",
@@ -178,7 +191,7 @@ function Feedback({ question, attempt }: { question: Question; attempt: Attempt 
         href={question.sourceUrl}
         target="_blank"
         rel="noreferrer"
-        className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+        className="inline-flex min-h-11 max-w-full flex-wrap items-center gap-1 py-1 text-sm font-medium text-primary break-words hover:underline"
       >
         Microsoft Learn: {question.sourceTitle} <ExternalLink className="size-3.5" aria-hidden />
         <span className="sr-only">(opens in new tab)</span>

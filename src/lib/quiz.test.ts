@@ -13,6 +13,15 @@ describe("question bank", () => {
     for (const d of ["cloud-concepts", "architecture-services", "management-governance"])
       expect(QUESTIONS.filter((q) => q.kind === "diagnostic" && q.domain === d)).toHaveLength(4);
   });
+
+  it("clarifies that region pairs alone do not provide automatic recovery", () => {
+    const followUp = QUESTION_MAP["as-az-f"];
+    expect(followUp?.correctOptionId).toBe("b");
+    expect(followUp?.scenario).toContain("service that supports geo-replication");
+    expect(followUp?.explanation).toContain(
+      "does not replicate a workload or provide automatic recovery",
+    );
+  });
 });
 
 describe("session", () => {

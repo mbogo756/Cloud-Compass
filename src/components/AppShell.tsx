@@ -12,8 +12,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col bg-surface">
       <header className="border-b bg-background">
-        <div className="mx-auto flex h-14 max-w-4xl items-center justify-between gap-4 px-4">
-          <Link to="/" className="flex items-center gap-2 font-semibold text-foreground">
+        <div className="mx-auto flex min-h-14 w-full max-w-4xl flex-col items-start justify-center gap-1 px-4 py-2 sm:h-14 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:py-0">
+          <Link to="/" className="inline-flex min-h-11 items-center gap-2 font-semibold text-foreground">
             <Compass className="size-5 text-primary" aria-hidden />
             <span>Cloud Compass</span>
           </Link>
@@ -23,8 +23,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                 key={n.to}
                 to={n.to}
                 activeOptions={{ exact: true }}
-                className="rounded-md px-3 py-2 text-muted-foreground hover:bg-surface hover:text-foreground"
-                activeProps={{ className: "rounded-md px-3 py-2 bg-accent text-accent-foreground font-medium" }}
+                className="inline-flex min-h-11 items-center rounded-md px-3 py-2 text-muted-foreground hover:bg-surface hover:text-foreground"
+                activeProps={{ className: "inline-flex min-h-11 items-center rounded-md px-3 py-2 bg-accent text-accent-foreground font-medium" }}
               >
                 {n.label}
               </Link>
