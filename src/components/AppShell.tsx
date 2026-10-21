@@ -36,7 +36,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <footer className="border-t bg-background">
         <div className="mx-auto max-w-4xl space-y-1 px-4 py-4 text-xs text-muted-foreground">
           <p>Unofficial AZ-900 practice tool. Not affiliated with or endorsed by Microsoft.</p>
-          <p>Prototype question bank — content review pending. Progress is stored only in this browser on this device.</p>
+          <p>Prototype question bank — project content review complete; not Microsoft-approved. Progress is stored only in this browser on this device.</p>
         </div>
       </footer>
     </div>

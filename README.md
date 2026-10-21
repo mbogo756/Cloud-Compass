@@ -136,9 +136,9 @@ All practice data lives in `localStorage` under the key `cloud-compass:v1`.
 
 ## Question content
 
-The question bank (`src/data/questions.ts`) is prototype content authored for this hackathon.
-It has **not been reviewed by Microsoft** or any certification authority.
-All questions carry `reviewStatus: "draft-pending-review"`.
+The question bank (`src/data/questions.ts`) is original prototype content authored for this hackathon.
+Its questions, explanations, and source links have completed project content review; they have **not been reviewed or approved by Microsoft** or any certification authority.
+All questions carry `reviewStatus: "reviewed"`.
 
 Content is kept strictly separate from scoring logic (`src/lib/quiz.ts`) and UI so it can be reviewed and corrected independently.
 

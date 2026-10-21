@@ -1,4 +1,4 @@
-// Prototype question bank. Original wording, draft content pending human review.
+// Prototype question bank. Original wording, reviewed for this project.
 // Not Microsoft-approved. Kept separate from UI and scoring logic.
 
 export type Domain = "cloud-concepts" | "architecture-services" | "management-governance";
@@ -25,7 +25,7 @@ export type Question = {
   misconceptionTags: string[];
   sourceUrl: string;
   sourceTitle: string;
-  reviewStatus: "draft-pending-review";
+  reviewStatus: "reviewed";
   pairedQuestionId?: string;
 };
 
@@ -43,7 +43,7 @@ const SRC = {
 } as const;
 
 const src = (k: keyof typeof SRC) => ({ sourceUrl: SRC[k][0], sourceTitle: SRC[k][1] });
-const R = "draft-pending-review" as const;
+const R = "reviewed" as const;
 
 export const QUESTIONS: Question[] = [
   // ---------- Cloud concepts ----------
@@ -251,20 +251,22 @@ export const QUESTIONS: Question[] = [
   },
   {
     id: "as-stor-1", kind: "diagnostic", domain: "architecture-services", concept: "Blob storage access tiers",
-    scenario: "A clinic must keep old scanned records for years. They're almost never read, and waiting hours to retrieve one is acceptable. Which blob access tier is most cost-effective?",
+    scenario: "A clinic must keep old scanned records for years. They're almost never read, and waiting hours to retrieve one is acceptable. Which blob access tier has the lowest storage cost for this access pattern? Consider retrieval and transaction costs separately from storage price.",
     options: [
       { id: "a", text: "Hot" },
       { id: "b", text: "Cool" },
-      { id: "c", text: "Archive" },
-      { id: "d", text: "Premium" },
+      { id: "c", text: "Cold" },
+      { id: "d", text: "Archive" },
+      { id: "e", text: "Premium" },
     ],
-    correctOptionId: "c",
-    explanation: "The archive tier has the lowest storage cost for rarely accessed data that tolerates retrieval latency of hours.",
-    conceptSummary: "Hot: frequent access. Cool: infrequent access, stored at least ~30 days. Archive: rarely accessed, offline, retrieval can take hours, lowest storage cost.",
+    correctOptionId: "d",
+    explanation: "Archive has the lowest storage cost and suits rarely accessed data that can tolerate retrieval latency of hours. Retrieval, rehydration, and transaction charges can affect total cost.",
+    conceptSummary: "Hot: frequent access. Cool: infrequent access. Cold: rarely accessed but online for fast retrieval. Archive: rarely accessed, offline, lowest storage cost, and retrieval can take hours.",
     explanationsForWrongOptions: {
       a: "Hot is optimized for frequently accessed data and costs the most to store.",
       b: "Cool is cheaper than hot but still more expensive to store than archive; it suits data read occasionally.",
-      d: "Premium is for low-latency performance, the opposite of this need.",
+      c: "Cold is for rarely accessed data that still needs fast online retrieval; this clinic can tolerate hours.",
+      e: "Premium is for low-latency performance, the opposite of this need.",
     },
     misconceptionTags: ["storage-tiers"],
     ...src("storage"), reviewStatus: R,
@@ -293,7 +295,7 @@ export const QUESTIONS: Question[] = [
   // ---------- Azure management and governance ----------
   {
     id: "mg-pol-1", kind: "diagnostic", domain: "management-governance", concept: "Azure Policy vs. Azure RBAC",
-    scenario: "An IT lead wants to ensure that no one in the company can create resources outside the West Europe region, even admins. Which service should they use?",
+    scenario: "An IT lead wants ordinary deployments, including deployments by resource owners, to be denied outside the West Europe region. An allowed-locations deny policy is assigned at the relevant scope with no exemption. Which service provides this enforcement?",
     options: [
       { id: "a", text: "Azure role-based access control (RBAC)" },
       { id: "b", text: "Azure Policy" },
@@ -301,7 +303,7 @@ export const QUESTIONS: Question[] = [
       { id: "d", text: "Azure Advisor" },
     ],
     correctOptionId: "b",
-    explanation: "Azure Policy enforces rules on resource properties—such as allowed locations—regardless of who creates them.",
+    explanation: "While an allowed-locations deny policy remains assigned at the relevant scope and has no exemption, Azure Policy denies ordinary deployments outside West Europe regardless of the resource owner's role.",
     conceptSummary: "RBAC controls who can do what. Azure Policy controls what resources are allowed to look like. They work together.",
     explanationsForWrongOptions: {
       a: "RBAC controls who can perform actions, not which property values (like region) resources may have. An admin with rights could still pick any region.",
@@ -313,15 +315,15 @@ export const QUESTIONS: Question[] = [
   },
   {
     id: "mg-pol-f", kind: "follow-up", domain: "management-governance", concept: "Azure Policy vs. Azure RBAC",
-    scenario: "A school wants a teaching assistant to restart virtual machines but not delete them. What should be used?",
+    scenario: "A school wants a teaching assistant to restart virtual machines but not delete them. What should be assigned at the narrowest suitable scope?",
     options: [
       { id: "a", text: "Azure Policy" },
-      { id: "b", text: "Azure RBAC role assignment" },
+      { id: "b", text: "A custom Azure RBAC role assignment" },
       { id: "c", text: "Resource lock" },
       { id: "d", text: "Microsoft Purview" },
     ],
     correctOptionId: "b",
-    explanation: "Granting a specific person a specific set of actions is what Azure RBAC does, using roles assigned at a scope.",
+    explanation: "Assign a custom Azure RBAC role at the narrowest suitable scope. Include the required VM restart permissions and omit delete permissions.",
     conceptSummary: "\"Who can do which action?\" → RBAC. \"Which configurations are allowed?\" → Policy.",
     explanationsForWrongOptions: {
       a: "Policy governs resource properties, not which user can perform which action.",
@@ -333,7 +335,7 @@ export const QUESTIONS: Question[] = [
   },
   {
     id: "mg-lock-1", kind: "diagnostic", domain: "management-governance", concept: "Resource locks",
-    scenario: "A company's production database must never be deleted by accident, even by an owner, while still allowing changes to its settings. What should be applied?",
+    scenario: "A company wants to protect its production database against accidental deletion while still allowing authorized users to change its settings. What should be applied?",
     options: [
       { id: "a", text: "A ReadOnly lock" },
       { id: "b", text: "A CanNotDelete (Delete) lock" },
@@ -341,8 +343,8 @@ export const QUESTIONS: Question[] = [
       { id: "d", text: "A cost budget" },
     ],
     correctOptionId: "b",
-    explanation: "A delete lock prevents deletion while still allowing authorized users to read and modify the resource.",
-    conceptSummary: "Locks apply to everyone, including owners. Delete lock: no deletion. ReadOnly lock: no deletion or changes.",
+    explanation: "A CanNotDelete lock blocks deletion while it exists, while allowing authorized users to read and modify the resource. An authorized user with lock-management permission, such as an Owner, can remove the lock.",
+    conceptSummary: "Locks apply across roles while they exist. Delete lock: blocks deletion but allows changes. ReadOnly lock: blocks control-plane updates and deletion. Authorized users with lock-management permission can remove a lock.",
     explanationsForWrongOptions: {
       a: "ReadOnly would also block setting changes, which the company still needs.",
       c: "Changing roles affects specific users; an owner could still delete the database.",
@@ -353,7 +355,7 @@ export const QUESTIONS: Question[] = [
   },
   {
     id: "mg-lock-f", kind: "follow-up", domain: "management-governance", concept: "Resource locks",
-    scenario: "An administrator applied a ReadOnly lock to a storage account. A user with the Owner role tries to change a setting. What happens?",
+    scenario: "An administrator applied a ReadOnly lock to a storage account. A user with the Owner role tries to change an ARM-managed setting that the lock blocks. What happens?",
     options: [
       { id: "a", text: "The change succeeds because Owners bypass locks" },
       { id: "b", text: "The change is blocked until the lock is removed" },
@@ -361,10 +363,10 @@ export const QUESTIONS: Question[] = [
       { id: "d", text: "The storage account is automatically deleted" },
     ],
     correctOptionId: "b",
-    explanation: "Locks apply regardless of role. The lock must be removed before the change can be made.",
+    explanation: "The ReadOnly lock blocks that Azure control-plane operation regardless of the user's role. Even an Owner must remove the lock before making the blocked change.",
     conceptSummary: "Locks override permissions; removing a lock is a deliberate extra step.",
     explanationsForWrongOptions: {
-      a: "Owners don't bypass locks; they'd need to remove the lock first.",
+      a: "Owners don't bypass a lock for a blocked control-plane operation; they'd need to remove the lock first.",
       c: "Locks block the action—they don't just warn.",
       d: "Locks never delete resources.",
     },
